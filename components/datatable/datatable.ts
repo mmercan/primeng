@@ -109,8 +109,8 @@ export class RowExpansionLoader {
                                 (click)="sort($event,col)" (mouseenter)="hoveredHeader = $event.target" (mouseleave)="hoveredHeader = null"
                                 [ngClass]="{'ui-state-default ui-unselectable-text':true, 'ui-state-hover': headerCell === hoveredHeader && col.sortable,'ui-state-focus': headerCell === focusedHeader && col.sortable,
                                 'ui-sortable-column': col.sortable,'ui-state-active': isSorted(col), 'ui-resizable-column': resizableColumns,'ui-selection-column':col.selectionMode}" 
-                                [draggable]="reorderableColumns" (dragstart)="onColumnDragStart($event)" (dragover)="onColumnDragover($event)" (dragleave)="onColumnDragleave($event)" (drop)="onColumnDrop($event)"
-                                [tabindex]="col.sortable ? tabindex : -1" (focus)="focusedHeader=$event.target" (blur)="focusedHeader=null" (keydown)="onHeaderKeydown($event,col)">
+                                (dragstart)="onColumnDragStart($event)" (dragover)="onColumnDragover($event)" (dragleave)="onColumnDragleave($event)" (drop)="onColumnDrop($event)" (mousedown)="onHeaderMousedown($event,headerCell)"
+                                [attr.tabindex]="col.sortable ? tabindex : null" (focus)="focusedHeader=$event.target" (blur)="focusedHeader=null" (keydown)="onHeaderKeydown($event,col)">
                                 <span class="ui-column-resizer" *ngIf="resizableColumns && ((columnResizeMode == 'fit' && !lastCol) || columnResizeMode == 'expand')" (mousedown)="initColumnResize($event)"></span>
                                 <span class="ui-column-title" *ngIf="!col.selectionMode&&!col.headerTemplate">{{col.header}}</span>
                                 <span class="ui-column-title" *ngIf="col.headerTemplate">
@@ -118,7 +118,7 @@ export class RowExpansionLoader {
                                 </span>
                                 <span class="ui-sortable-column-icon fa fa-fw fa-sort" *ngIf="col.sortable"
                                      [ngClass]="{'fa-sort-desc': (getSortOrder(col) == -1),'fa-sort-asc': (getSortOrder(col) == 1)}"></span>
-                                <input type="text" pInputText class="ui-column-filter" *ngIf="col.filter" [value]="filters[col.field] ? filters[col.field].value : ''" (click)="onFilterInputClick($event)" (keyup)="onFilterKeyup($event.target.value, col.field, col.filterMatchMode)"/>
+                                <input type="text" pInputText class="ui-column-filter" [attr.placeholder]="col.filterPlaceholder" *ngIf="col.filter" [value]="filters[col.field] ? filters[col.field].value : ''" (click)="onFilterInputClick($event)" (keyup)="onFilterKeyup($event.target.value, col.field, col.filterMatchMode)"/>
                                 <p-dtCheckbox *ngIf="col.selectionMode=='multiple'" (onChange)="toggleRowsWithCheckbox($event)" [checked]="allSelected" [disabled]="isEmpty()"></p-dtCheckbox>
                             </th>
                         </tr>
@@ -136,7 +136,7 @@ export class RowExpansionLoader {
                                     </span>
                                     <span class="ui-sortable-column-icon fa fa-fw fa-sort" *ngIf="col.sortable"
                                          [ngClass]="{'fa-sort-desc': (getSortOrder(col) == -1),'fa-sort-asc': (getSortOrder(col) == 1)}"></span>
-                                    <input type="text" pInputText class="ui-column-filter" *ngIf="col.filter" [value]="filters[col.field] ? filters[col.field].value : ''" (click)="onFilterInputClick($event)" (keyup)="onFilterKeyup($event.target.value, col.field, col.filterMatchMode)"/>
+                                    <input type="text" pInputText class="ui-column-filter" [attr.placeholder]="col.filterPlaceholder" *ngIf="col.filter" [value]="filters[col.field] ? filters[col.field].value : ''" (click)="onFilterInputClick($event)" (keyup)="onFilterKeyup($event.target.value, col.field, col.filterMatchMode)"/>
                                 </th>
                             </tr>
                         </template>
@@ -164,11 +164,11 @@ export class RowExpansionLoader {
                         </template>
                     </tfoot>
                     <tbody class="ui-datatable-data ui-widget-content">
-                        <template ngFor let-rowData [ngForOf]="dataToRender" let-even="even" let-odd="odd" let-rowIndex="index">
-                            <tr #rowElement class="ui-widget-content" (mouseenter)="hoveredRow = $event.target" (mouseleave)="hoveredRow = null"
-                                    (click)="handleRowClick($event, rowData)" (dblclick)="rowDblclick($event,rowData)" (contextmenu)="onRowRightClick($event,rowData)"
+                        <template ngFor let-rowData [ngForOf]="dataToRender" let-even="even" let-odd="odd" let-rowIndex="index" [ngForTrackBy]="rowTrackBy">
+                            <tr #rowElement [class]="getRowStyleClass(rowData,rowIndex)" (mouseenter)="hoveredRow = $event.target" (mouseleave)="hoveredRow = null"
+                                    (click)="handleRowClick($event, rowData)" (dblclick)="rowDblclick($event,rowData)" (contextmenu)="onRowRightClick($event,rowData)" (touchstart)="handleRowTap($event, rowData)"
                                     [ngClass]="{'ui-datatable-even':even,'ui-datatable-odd':odd,'ui-state-hover': (selectionMode && rowElement == hoveredRow), 'ui-state-highlight': isSelected(rowData)}">
-                                <td *ngFor="let col of columns" [ngStyle]="col.style" [class]="col.styleClass" [style.display]="col.hidden ? 'none' : 'table-cell'"
+                                <td *ngFor="let col of columns;let colIndex = index" [ngStyle]="col.style" [class]="col.styleClass" [style.display]="col.hidden ? 'none' : 'table-cell'"
                                     [ngClass]="{'ui-editable-column':col.editable,'ui-selection-column':col.selectionMode}" (click)="switchCellToEditMode($event.target,col,rowData)">
                                     <span class="ui-column-title" *ngIf="responsive">{{col.header}}</span>
                                     <span class="ui-cell-data" *ngIf="!col.bodyTemplate && !col.expander && !col.selectionMode">{{resolveFieldData(rowData,col.field)}}</span>
@@ -176,10 +176,10 @@ export class RowExpansionLoader {
                                         <p-columnBodyTemplateLoader [column]="col" [rowData]="rowData" [rowIndex]="rowIndex + first"></p-columnBodyTemplateLoader>
                                     </span>
                                     <input type="text" class="ui-cell-editor ui-state-highlight" *ngIf="col.editable" [(ngModel)]="rowData[col.field]"
-                                            (blur)="switchCellToViewMode($event.target,col,rowData,true)" (keydown)="onCellEditorKeydown($event, col, rowData)"/>
+                                            (blur)="switchCellToViewMode($event.target,col,rowData,true)" (keydown)="onCellEditorKeydown($event, col, rowData, colIndex)"/>
                                     <div class="ui-row-toggler fa fa-fw ui-c" [ngClass]="{'fa-chevron-circle-down':isRowExpanded(rowData), 'fa-chevron-circle-right': !isRowExpanded(rowData)}"
                                         *ngIf="col.expander" (click)="toggleRow(rowData)"></div>
-                                    <p-dtRadioButton *ngIf="col.selectionMode=='single'" (onClick)="selectRowWithRadio(rowData)" [checked]="isSelected(rowData)"></p-dtRadioButton>
+                                    <p-dtRadioButton *ngIf="col.selectionMode=='single'" (onClick)="selectRowWithRadio($event, rowData)" [checked]="isSelected(rowData)"></p-dtRadioButton>
                                     <p-dtCheckbox *ngIf="col.selectionMode=='multiple'" (onChange)="toggleRowWithCheckbox($event,rowData)" [checked]="isSelected(rowData)"></p-dtCheckbox>
                                 </td>
                             </tr>
@@ -191,7 +191,7 @@ export class RowExpansionLoader {
                         </template>
                         
                         <tr *ngIf="isEmpty()" class="ui-widget-content">
-                            <td [attr.colspan]="visibleColumns().length">{{emptyMessage}}</td>
+                            <td [attr.colspan]="visibleColumns().length" class="ui-datatable-emptymessage">{{emptyMessage}}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -216,7 +216,7 @@ export class RowExpansionLoader {
                                     </span>
                                     <span class="ui-sortable-column-icon fa fa-fw fa-sort" *ngIf="col.sortable"
                                          [ngClass]="{'fa-sort-desc': (col.field === sortField) && (sortOrder == -1),'fa-sort-asc': (col.field === sortField) && (sortOrder == 1)}"></span>
-                                    <input type="text" pInputText class="ui-column-filter" *ngIf="col.filter" (click)="onFilterInputClick($event)" (keyup)="onFilterKeyup($event.target.value, col.field, col.filterMatchMode)"/>
+                                    <input type="text" pInputText class="ui-column-filter" [attr.placeholder]="col.filterPlaceholder" *ngIf="col.filter" (click)="onFilterInputClick($event)" (keyup)="onFilterKeyup($event.target.value, col.field, col.filterMatchMode)"/>
                                     <p-dtCheckbox *ngIf="col.selectionMode=='multiple'" (onChange)="toggleRowsWithCheckbox($event)" [checked]="allSelected" [disabled]="isEmpty()"></p-dtCheckbox>
                                 </th>
                             </tr>
@@ -227,11 +227,11 @@ export class RowExpansionLoader {
             <div class="ui-datatable-scrollable-body" *ngIf="scrollable" [ngStyle]="{'width': scrollWidth}">
                 <table [class]="tableStyleClass" [ngStyle]="tableStyle">
                     <tbody class="ui-datatable-data ui-widget-content">
-                        <template ngFor let-rowData [ngForOf]="dataToRender" let-even="even" let-odd="odd" let-rowIndex="index">
+                        <template ngFor let-rowData [ngForOf]="dataToRender" let-even="even" let-odd="odd" let-rowIndex="index" [ngForTrackBy]="rowTrackBy">
                             <tr #rowElement class="ui-widget-content" (mouseenter)="hoveredRow = $event.target" (mouseleave)="hoveredRow = null"
                                     (click)="handleRowClick($event, rowData)" (dblclick)="rowDblclick($event,rowData)" (contextmenu)="onRowRightClick($event,rowData)"
                                     [ngClass]="{'ui-datatable-even':even,'ui-datatable-odd':odd,'ui-state-hover': (selectionMode && rowElement == hoveredRow), 'ui-state-highlight': isSelected(rowData)}">
-                                <td *ngFor="let col of columns" [ngStyle]="col.style" [class]="col.styleClass" [style.display]="col.hidden ? 'none' : 'table-cell'"
+                                <td *ngFor="let col of columns; let colIndex = index;" [ngStyle]="col.style" [class]="col.styleClass" [style.display]="col.hidden ? 'none' : 'table-cell'"
                                     [ngClass]="{'ui-editable-column':col.editable,'ui-selection-column':col.selectionMode}" (click)="switchCellToEditMode($event.target,col,rowData)">
                                     <span class="ui-column-title" *ngIf="responsive">{{col.header}}</span>
                                     <span class="ui-cell-data" *ngIf="!col.bodyTemplate">{{resolveFieldData(rowData,col.field)}}</span>
@@ -239,10 +239,10 @@ export class RowExpansionLoader {
                                         <p-columnBodyTemplateLoader [column]="col" [rowData]="rowData" [rowIndex]="rowIndex + first"></p-columnBodyTemplateLoader>
                                     </span>
                                     <input type="text" class="ui-cell-editor ui-state-highlight" *ngIf="col.editable" [(ngModel)]="rowData[col.field]"
-                                            (blur)="switchCellToViewMode($event.target,col,rowData,true)" (keydown)="onCellEditorKeydown($event, col, rowData)"/>
+                                            (blur)="switchCellToViewMode($event.target,col,rowData,true)" (keydown)="onCellEditorKeydown($event, col, rowData, colIndex)"/>
                                     <div class="ui-row-toggler fa fa-fw ui-c" [ngClass]="{'fa-chevron-circle-down':isRowExpanded(rowData), 'fa-chevron-circle-right': !isRowExpanded(rowData)}"
                                         *ngIf="col.expander" (click)="toggleRow(rowData)"></div>
-                                    <p-dtRadioButton *ngIf="col.selectionMode=='single'" (onClick)="selectRowWithRadio(rowData)" [checked]="isSelected(rowData)"></p-dtRadioButton>
+                                    <p-dtRadioButton *ngIf="col.selectionMode=='single'" (onClick)="selectRowWithRadio($event, rowData)" [checked]="isSelected(rowData)"></p-dtRadioButton>
                                     <p-dtCheckbox *ngIf="col.selectionMode=='multiple'" (onChange)="toggleRowWithCheckbox($event,rowData)" [checked]="isSelected(rowData)"></p-dtCheckbox>
                                 </td>
                             </tr>
@@ -254,7 +254,7 @@ export class RowExpansionLoader {
                         </template>
                         
                         <tr *ngIf="isEmpty()" class="ui-widget-content">
-                            <td [attr.colspan]="visibleColumns().length">{{emptyMessage}}</td>
+                            <td [attr.colspan]="visibleColumns().length" class="ui-datatable-emptymessage">{{emptyMessage}}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -350,11 +350,15 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
     
     @Input() csvSeparator: string = ',';
     
+    @Input() exportFilename: string = 'download';
+    
     @Input() emptyMessage: string = 'No records found';
     
     @Input() paginatorPosition: string = 'bottom';
     
     @Input() expandedRows: any[];
+    
+    @Input() rowTrackBy: Function;
     
     @Output() onEditInit: EventEmitter<any> = new EventEmitter();
 
@@ -377,6 +381,8 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
     @Input() expandableRows: boolean;
     
     @Input() tabindex: number = 1;
+    
+    @Input() rowStyleClass: Function;
     
     @Output() onRowExpand: EventEmitter<any> = new EventEmitter();
     
@@ -443,8 +449,16 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
     public reorderIndicatorDown: any;
     
     public draggedColumn: any;
+    
+    public dropPosition: number;
             
     public tbody: any;
+    
+    public rowTouch: boolean;
+    
+    public editingCell: any;
+    
+    public lazyFilteredByUser: boolean;
 
     differ: any;
 
@@ -453,7 +467,7 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
     preventBlurOnEdit: boolean;
     
     columnsSubscription: Subscription;
-
+    
     constructor(public el: ElementRef, public domHandler: DomHandler, differs: IterableDiffers, 
             public renderer: Renderer, private changeDetector: ChangeDetectorRef) {
         this.differ = differs.find([]).create(null);
@@ -482,7 +496,7 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
     }
 
     ngAfterViewChecked() {
-        if(this.columnsChanged) {
+        if(this.columnsChanged && this.el.nativeElement.offsetParent) {
             if(this.resizableColumns) {
                 this.initResizableColumns();
             }
@@ -526,11 +540,23 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
         let changes = this.differ.diff(this.value);
         if(changes) {
             this.dataChanged = true;
-            
             if(this.paginator) {
                 this.updatePaginator();
             }
-            
+
+            if(this.hasFilter()) {
+                if(this.lazy) {
+                    //prevent loop
+                    if(this.lazyFilteredByUser)
+                        this.lazyFilteredByUser = false;
+                    else
+                        this.filter();
+                }
+                else {
+                    this.filter();
+                }
+            }
+                        
             if(this.stopSortPropagation) {
                 this.stopSortPropagation = false;
             }
@@ -618,7 +644,17 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
             event.preventDefault();
         }
     }
-
+    
+    onHeaderMousedown(event, header: any) {
+        if(this.reorderableColumns) {
+            if(event.target.nodeName !== 'INPUT') {
+                header.draggable = true;
+            } else if(event.target.nodeName === 'INPUT') {
+                header.draggable = false;
+            }
+        }
+    }
+    
     sort(event, column: Column) {
         if(!column.sortable) {
             return;
@@ -784,8 +820,59 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
         }
         return order;
     }
-
+    
     handleRowClick(event, rowData) {
+        if(this.rowTouch) {
+            this.rowTouch = false;
+            return false;
+        }
+        
+        let targetNode = event.target.nodeName;
+        if(targetNode == 'TD' || (targetNode == 'SPAN' && !this.domHandler.hasClass(event.target, 'ui-c'))) {
+            this.onRowClick.next({originalEvent: event, data: rowData});
+            
+            if(!this.selectionMode) {
+                return;
+            }
+            
+            let metaKey = event.metaKey||event.ctrlKey;
+            let selected = this.isSelected(rowData);
+            
+            if(selected && metaKey) {
+                if(this.isSingleSelectionMode()) {
+                    this.selection = null;
+                    this.selectionChange.emit(null);
+                }
+                else {
+                    this.selection.splice(this.findIndexInSelection(rowData), 1);
+                    this.selectionChange.emit(this.selection);
+                }
+                
+                this.onRowUnselect.emit({originalEvent: event, data: rowData, type: 'row'});
+            }
+            else {
+                if(this.isSingleSelectionMode()) {
+                    this.selection = rowData;
+                    this.selectionChange.emit(rowData);
+                }
+                else if(this.isMultipleSelectionMode()) {
+                    if(metaKey)
+                        this.selection = this.selection||[];
+                    else 
+                        this.selection = [];
+                    
+                    this.selection.push(rowData);
+                    this.selectionChange.emit(this.selection);
+                }
+
+                this.onRowSelect.emit({originalEvent: event, data: rowData, type: 'row'});
+            }
+        }
+    }
+
+    handleRowTap(event, rowData) {
+        this.rowTouch = true;
+        
         let targetNode = event.target.nodeName;
         if(targetNode == 'TD' || (targetNode == 'SPAN' && !this.domHandler.hasClass(event.target, 'ui-c'))) {
             this.onRowClick.next({originalEvent: event, data: rowData});
@@ -822,7 +909,7 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
         }
     }
     
-    selectRowWithRadio(rowData:any) {
+    selectRowWithRadio(event, rowData:any) {
         if(this.selection != rowData) {
             this.selection = rowData;
             this.selectionChange.emit(this.selection);
@@ -932,9 +1019,17 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
         }
 
         this.filterTimeout = setTimeout(() => {
-            this.filters[field] = {value: value, matchMode: matchMode};
+            if(value && value.trim().length)
+                this.filters[field] = {value: value, matchMode: matchMode};
+            else if(this.filters[field])
+                delete this.filters[field];
+            
+            if(this.lazy) {
+                this.lazyFilteredByUser = true;
+            }
+            
             this.filter();
-            this.filterTimeout = null;
+            this.filterTimeout = null;            
         }, this.filterDelay);
     }
 
@@ -1064,12 +1159,15 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
 
     switchCellToEditMode(element: any, column: Column, rowData: any) {
         if(!this.selectionMode && this.editable && column.editable) {
-            this.onEditInit.emit({column: column, data: rowData});
             let cell = this.findCell(element);
-            if(!this.domHandler.hasClass(cell, 'ui-cell-editing')) {
-                this.domHandler.addClass(cell, 'ui-cell-editing');
-                this.domHandler.addClass(cell, 'ui-state-highlight');
-                let editor = cell.querySelector('.ui-cell-editor').focus();
+            if(cell != this.editingCell) {
+                this.editingCell = cell;
+                this.onEditInit.emit({column: column, data: rowData});
+                if(!this.domHandler.hasClass(cell, 'ui-cell-editing')) {
+                    this.domHandler.addClass(cell, 'ui-cell-editing');
+                    this.domHandler.addClass(cell, 'ui-state-highlight');
+                    let editor = cell.querySelector('.ui-cell-editor').focus();
+                }                
             }
         }
     }
@@ -1088,23 +1186,62 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
                 let cell = this.findCell(element);
                 this.domHandler.removeClass(cell, 'ui-cell-editing');
                 this.domHandler.removeClass(cell, 'ui-state-highlight');
+                this.editingCell = null;
             }
         }
     }
 
-    onCellEditorKeydown(event, column: Column, rowData: any) {
+    onCellEditorKeydown(event, column: Column, rowData: any, colIndex: number) {
         if(this.editable) {
             this.onEdit.emit({originalEvent: event,column: column, data: rowData});
-
+            
             //enter
             if(event.keyCode == 13) {
                 this.switchCellToViewMode(event.target, column, rowData, true);
                 this.preventBlurOnEdit = true;
+                event.preventDefault();
             }
+            
             //escape
-            if(event.keyCode == 27) {
+            else if(event.keyCode == 27) {
                 this.switchCellToViewMode(event.target, column, rowData, false);
                 this.preventBlurOnEdit = true;
+                event.preventDefault();
+            }
+            
+            //tab
+            else if(event.keyCode == 9) {
+                let currentCell = this.findCell(event.target);
+                let row = currentCell.parentElement;
+                let targetCell;
+                
+                if(event.shiftKey) {
+                    if(colIndex == 0) {
+                        let previousRow = row.previousElementSibling;
+                        if(previousRow) {
+                            targetCell = previousRow.lastElementChild;
+                        }
+                    }
+                    else {
+                        targetCell = row.children[colIndex - 1];
+                    }
+                }
+                else {
+                    if(colIndex == (row.children.length - 1)) {
+                        let nextRow = row.nextElementSibling;
+                        if(nextRow) {
+                            targetCell = nextRow.firstElementChild;
+                        }
+                    }
+                    else {
+                        targetCell = row.children[colIndex + 1];
+                    }
+                }
+                
+                if(targetCell) {
+                    this.renderer.invokeElementMethod(targetCell, 'click');
+                    event.preventDefault();
+                }
             }
         }
     }
@@ -1191,9 +1328,6 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
     
     fixColumnWidths() {
         let columns = this.domHandler.find(this.el.nativeElement, 'th.ui-resizable-column');
-        for(let col of columns) {
-            col.style.width = 'auto';
-        }
         
         for(let col of columns) {
             col.style.width = col.offsetWidth + 'px';
@@ -1207,7 +1341,7 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
         }
 
         this.draggedColumn = this.findParentHeader(event.target);
-        event.dataTransfer.setData('a', 'b'); // Firefox requires this to make dragging possible
+        event.dataTransfer.setData('text', 'b'); // Firefox requires this to make dragging possible
     }
     
     onColumnDragover(event) {
@@ -1217,8 +1351,8 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
             
             if(this.draggedColumn != dropHeader) {
                 let targetPosition = dropHeader.getBoundingClientRect();
-                let targetLeft = targetPosition.left + document.body.scrollLeft;
-                let targetTop =  targetPosition.top + document.body.scrollTop;
+                let targetLeft = targetPosition.left + this.domHandler.getWindowScrollLeft();
+                let targetTop =  targetPosition.top + this.domHandler.getWindowScrollTop();
                 let columnCenter = targetLeft + dropHeader.offsetWidth / 2;
                 
                 this.reorderIndicatorUp.style.top = (targetTop - 16) + 'px';
@@ -1227,10 +1361,12 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
                 if(event.pageX > columnCenter) {
                     this.reorderIndicatorUp.style.left = (targetLeft + dropHeader.offsetWidth - 8) + 'px';
                     this.reorderIndicatorDown.style.left = (targetLeft + dropHeader.offsetWidth - 8)+ 'px';
+                    this.dropPosition = 1;
                 }
                 else {
                     this.reorderIndicatorUp.style.left = (targetLeft - 8) + 'px';
                     this.reorderIndicatorDown.style.left = (targetLeft - 8)+ 'px';
+                    this.dropPosition = -1;
                 }
                 
                 this.reorderIndicatorUp.style.display = 'block';
@@ -1254,8 +1390,12 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
         event.preventDefault();
         let dragIndex = this.domHandler.index(this.draggedColumn);
         let dropIndex = this.domHandler.index(this.findParentHeader(event.target));
-
-        if(dragIndex != dropIndex) {
+        let allowDrop = (dragIndex != dropIndex);
+        if(allowDrop && ((dropIndex - dragIndex == 1 && this.dropPosition === -1) || (dragIndex - dropIndex == 1 && this.dropPosition === 1))) {
+            allowDrop = false;
+        }
+    
+        if(allowDrop) {
             this.columns.splice(dropIndex, 0, this.columns.splice(dragIndex, 1)[0]);
 
             this.onColReorder.emit({
@@ -1267,7 +1407,9 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
         
         this.reorderIndicatorUp.style.display = 'none';
         this.reorderIndicatorDown.style.display = 'none';
+        this.draggedColumn.draggable = false;
         this.draggedColumn = null;
+        this.dropPosition = null;
     }
 
     initColumnReordering() {
@@ -1315,16 +1457,18 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
         if(this.scrollHeight) {
             if(this.percentageScrollHeight) {
                 let relativeHeight = this.domHandler.getOuterHeight(this.el.nativeElement.parentElement) * (parseInt(this.scrollHeight) / 100);
-                let headerHeight = this.domHandler.getOuterHeight(tableHeader) + this.domHandler.getOuterHeight(this.scrollHeader);
+                let headerHeight =  this.domHandler.getOuterHeight(this.scrollHeader);
+                if(tableHeader) {
+                    headerHeight += this.domHandler.getOuterHeight(tableHeader);
+                }
                 this.scrollBody.style.maxHeight = (relativeHeight - headerHeight) + 'px';
             }
             else {
                 this.scrollBody.style.maxHeight = this.scrollHeight;
             }
 
-            if(this.hasVerticalOverflow()) {
-                this.scrollHeaderBox.style.marginRight = this.calculateScrollbarWidth() + 'px';
-            }
+            let marginRight = this.hasVerticalOverflow() ? this.calculateScrollbarWidth() : 0;
+            this.scrollHeaderBox.style.marginRight = marginRight + 'px';
         }
     }
         
@@ -1428,12 +1572,12 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
     }
 
     visibleColumns() {
-        return this.columns.filter(c => !c.hidden);
+        return this.columns ? this.columns.filter(c => !c.hidden): [];
     }
     
     public exportCSV() {
-        let data = this.value,
-        csv = "data:text/csv;charset=utf-8,";
+        let data = this.value;
+        let csv = '';
         
         //headers
         for(let i = 0; i < this.columns.length; i++) {
@@ -1460,11 +1604,44 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
             }
         });
         
-        window.open(encodeURI(csv));
+        let blob = new Blob([csv],{
+            type: 'text/csv;charset=utf-8;'
+        });
+        
+        if(window.navigator.msSaveOrOpenBlob) {
+            navigator.msSaveOrOpenBlob(blob, this.exportFilename + '.csv');
+        }
+        else {
+            let link = document.createElement("a");
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            if(link.download !== undefined) {
+                link.setAttribute('href', URL.createObjectURL(blob));
+                link.setAttribute('download', this.exportFilename + '.csv');
+                document.body.appendChild(link);
+                link.click();
+            }
+            else {
+                csv = 'data:text/csv;charset=utf-8,' + csv;
+                window.open(encodeURI(csv));
+            }
+            document.body.removeChild(link);
+        }
     }
     
     getBlockableElement(): HTMLElement {
         return this.el.nativeElement.children[0];
+    }
+    
+    getRowStyleClass(rowData: any, rowIndex: number) {
+        let styleClass = 'ui-widget-content';
+        if(this.rowStyleClass) {
+            let rowClass = this.rowStyleClass.call(this, rowData, rowIndex);
+            if(rowClass) {
+                styleClass += ' ' + rowClass;
+            }
+        }
+        return styleClass;
     }
 
     ngOnDestroy() {

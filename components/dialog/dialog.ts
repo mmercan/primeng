@@ -1,4 +1,4 @@
-import {NgModule,Component,ElementRef,AfterViewInit,AfterViewChecked,OnDestroy,Input,Output,EventEmitter,Renderer,ContentChild,trigger,state,style,transition,animate} from '@angular/core';
+import {NgModule,Component,ElementRef,AfterViewInit,AfterViewChecked,OnDestroy,Input,Output,EventEmitter,Renderer,ContentChild,ViewChild,trigger,state,style,transition,animate} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {DomHandler} from '../dom/domhandler';
 import {Header,SharedModule} from '../common/shared';
@@ -6,7 +6,7 @@ import {Header,SharedModule} from '../common/shared';
 @Component({
     selector: 'p-dialog',
     template: `
-        <div [ngClass]="{'ui-dialog ui-widget ui-widget-content ui-corner-all ui-shadow':true,'ui-dialog-rtl':rtl,'ui-dialog-draggable':draggable}" 
+        <div #container [ngClass]="{'ui-dialog ui-widget ui-widget-content ui-corner-all ui-shadow':true,'ui-dialog-rtl':rtl,'ui-dialog-draggable':draggable}" [ngStyle]="style" [class]="styleClass"
             [style.display]="visible ? 'block' : 'none'" [style.width.px]="width" [style.height.px]="height" (mousedown)="moveOnTop()" [@dialogState]="visible ? 'visible' : 'hidden'">
             <div class="ui-dialog-titlebar ui-widget-header ui-helper-clearfix ui-corner-top"
                 (mousedown)="initDrag($event)" (mouseup)="endDrag($event)">
@@ -19,7 +19,7 @@ import {Header,SharedModule} from '../common/shared';
                     <span class="fa fa-fw fa-close"></span>
                 </a>
             </div>
-            <div class="ui-dialog-content ui-widget-content" [style.height.px]="contentHeight">
+            <div #content class="ui-dialog-content ui-widget-content" [style.height.px]="contentHeight">
                 <ng-content></ng-content>
             </div>
             <ng-content select="footer"></ng-content>
@@ -61,8 +61,6 @@ export class Dialog implements AfterViewInit,AfterViewChecked,OnDestroy {
 
     @Input() modal: boolean;
 
-    @Input() showEffect: string;
-
     @Input() closeOnEscape: boolean = true;
 
     @Input() rtl: boolean;
@@ -73,7 +71,15 @@ export class Dialog implements AfterViewInit,AfterViewChecked,OnDestroy {
     
     @Input() appendTo: any;
     
+    @Input() style: any;
+        
+    @Input() styleClass: string;
+    
     @ContentChild(Header) headerFacet;
+    
+    @ViewChild('container') containerViewChild: ElementRef;
+    
+    @ViewChild('content') contentViewChild: ElementRef;
 
     @Output() onBeforeShow: EventEmitter<any> = new EventEmitter();
 
@@ -105,11 +111,13 @@ export class Dialog implements AfterViewInit,AfterViewChecked,OnDestroy {
     
     lastPageY: number;
     
-    mask: any;
+    mask: HTMLDivElement;
     
     shown: boolean;
     
-    contentContainer: any;
+    container: HTMLDivElement;
+    
+    contentContainer: HTMLDivElement;
     
     positionInitialized: boolean;
             
@@ -124,27 +132,30 @@ export class Dialog implements AfterViewInit,AfterViewChecked,OnDestroy {
         
         if(this._visible) {
             this.onBeforeShow.emit({});
-            
-            if(!this.positionInitialized) {
-                this.center();
-                this.positionInitialized = true;
-            }
-            
-            this.el.nativeElement.children[0].style.zIndex = ++DomHandler.zindex;
-                
             this.shown = true;
         } 
         
+        if(this.modal && !this._visible) {
+            this.disableModality();
+        }
+    }
+    
+    show() {
+        if(!this.positionInitialized) {
+            this.center();
+            this.positionInitialized = true;
+        }
+        
+        this.container.style.zIndex = String(++DomHandler.zindex);
+        
         if(this.modal) {
-            if(this._visible)
-                this.enableModality();
-            else
-                this.disableModality();
+            this.enableModality();
         }
     }
     
     ngAfterViewInit() {
-        this.contentContainer = this.domHandler.findSingle(this.el.nativeElement, '.ui-dialog-content');
+        this.container = <HTMLDivElement> this.containerViewChild.nativeElement;
+        this.contentContainer =  <HTMLDivElement> this.contentViewChild.nativeElement;
         
         if(this.draggable) {
             this.documentDragListener = this.renderer.listenGlobal('body', 'mousemove', (event) => {
@@ -173,7 +184,7 @@ export class Dialog implements AfterViewInit,AfterViewChecked,OnDestroy {
         if(this.closeOnEscape && this.closable) {
             this.documentEscapeListener = this.renderer.listenGlobal('body', 'keydown', (event) => {
                 if(event.which == 27) {
-                    if(this.el.nativeElement.children[0].style.zIndex == DomHandler.zindex) {
+                    if(parseInt(this.container.style.zIndex) == DomHandler.zindex) {
                         this.hide(event);
                     }
                 }
@@ -182,43 +193,43 @@ export class Dialog implements AfterViewInit,AfterViewChecked,OnDestroy {
         
         if(this.appendTo) {
             if(this.appendTo === 'body')
-                document.body.appendChild(this.el.nativeElement);
+                document.body.appendChild(this.container);
             else
-                this.appendTo.appendChild(this.el.nativeElement);
+                this.appendTo.appendChild(this.container);
         }
     }
     
     ngAfterViewChecked() {
         if(this.shown) {
+            this.show();
             this.onAfterShow.emit({});
             this.shown = false;
         }
     }
     
     center() {
-        let container = this.el.nativeElement.children[0];
-        let elementWidth = this.domHandler.getOuterWidth(container);
-        let elementHeight = this.domHandler.getOuterHeight(container);
+        let elementWidth = this.domHandler.getOuterWidth(this.container);
+        let elementHeight = this.domHandler.getOuterHeight(this.container);
         if(elementWidth == 0 && elementHeight == 0) {
-            container.style.visibility = 'hidden';
-            container.style.display = 'block';
-            elementWidth = this.domHandler.getOuterWidth(container);
-            elementHeight = this.domHandler.getOuterHeight(container);
-            container.style.display = 'none';
-            container.style.visibility = 'visible';
+            this.container.style.visibility = 'hidden';
+            this.container.style.display = 'block';
+            elementWidth = this.domHandler.getOuterWidth(this.container);
+            elementHeight = this.domHandler.getOuterHeight(this.container);
+            this.container.style.display = 'none';
+            this.container.style.visibility = 'visible';
         }
         let viewport = this.domHandler.getViewport();
         let x = (viewport.width - elementWidth) / 2;
         let y = (viewport.height - elementHeight) / 2;
 
-        container.style.left = x + 'px';
-        container.style.top = y + 'px';
+        this.container.style.left = x + 'px';
+        this.container.style.top = y + 'px';
     }
     
     enableModality() {
         if(!this.mask) {
             this.mask = document.createElement('div');
-            this.mask.style.zIndex = this.el.nativeElement.children[0].style.zIndex - 1;
+            this.mask.style.zIndex = String(parseInt(this.container.style.zIndex) - 1);
             this.domHandler.addMultipleClasses(this.mask, 'ui-widget-overlay ui-dialog-mask');
             document.body.appendChild(this.mask);
         }
@@ -239,7 +250,7 @@ export class Dialog implements AfterViewInit,AfterViewChecked,OnDestroy {
     }
     
     moveOnTop() {
-        this.el.nativeElement.children[0].style.zIndex = ++DomHandler.zindex;
+        this.container.style.zIndex = String(++DomHandler.zindex);
     }
     
     initDrag(event) {
@@ -252,14 +263,13 @@ export class Dialog implements AfterViewInit,AfterViewChecked,OnDestroy {
     
     onDrag(event) {
         if(this.dragging) {
-            let container = this.el.nativeElement.children[0];
             let deltaX = event.pageX - this.lastPageX;
             let deltaY = event.pageY - this.lastPageY;
-            let leftPos = parseInt(container.style.left);
-            let topPos = parseInt(container.style.top);
+            let leftPos = parseInt(this.container.style.left);
+            let topPos = parseInt(this.container.style.top);
 
-            container.style.left = leftPos + deltaX + 'px';
-            container.style.top = topPos + deltaY + 'px';
+            this.container.style.left = leftPos + deltaX + 'px';
+            this.container.style.top = topPos + deltaY + 'px';
             
             this.lastPageX = event.pageX;
             this.lastPageY = event.pageY;
@@ -282,16 +292,15 @@ export class Dialog implements AfterViewInit,AfterViewChecked,OnDestroy {
     
     onResize(event) {
         if(this.resizing) {
-            let container = this.el.nativeElement.children[0];
             let deltaX = event.pageX - this.lastPageX;
             let deltaY = event.pageY - this.lastPageY;
-            let containerWidth = this.domHandler.getOuterWidth(container);
+            let containerWidth = this.domHandler.getOuterWidth(this.container);
             let contentHeight = this.domHandler.getHeight(this.contentContainer);
             let newWidth = containerWidth + deltaX;
             let newHeight = contentHeight + deltaY;
 
             if(newWidth > this.minWidth)
-                container.style.width = newWidth + 'px';
+                this.container.style.width = newWidth + 'px';
                 
             if(newHeight > this.minHeight)
                 this.contentContainer.style.height = newHeight + 'px';
@@ -321,8 +330,8 @@ export class Dialog implements AfterViewInit,AfterViewChecked,OnDestroy {
             this.documentEscapeListener();
         }
         
-        if(this.appendTo && this.appendTo === 'body') {
-            document.body.removeChild(this.el.nativeElement);
+        if(this.appendTo) {
+            this.el.nativeElement.appendChild(this.container);
         }
     }
 

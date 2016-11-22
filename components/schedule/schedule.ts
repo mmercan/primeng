@@ -1,15 +1,13 @@
-import {NgModule,Component,ElementRef,AfterViewInit,OnDestroy,DoCheck,Input,Output,EventEmitter,IterableDiffers} from '@angular/core';
+import {NgModule,Component,ElementRef,OnDestroy,DoCheck,Input,Output,EventEmitter,IterableDiffers,AfterViewChecked} from '@angular/core';
 import {CommonModule} from '@angular/common';
 
 declare var jQuery: any;
 
 @Component({
     selector: 'p-schedule',
-    template: `
-        <div [ngStyle]="style" [class]="styleClass"></div>
-    `
+    template: '<div [ngStyle]="style" [class]="styleClass"></div>'
 })
-export class Schedule implements AfterViewInit,DoCheck,OnDestroy {
+export class Schedule implements DoCheck,OnDestroy,AfterViewChecked {
     
     @Input() events: any[];
     
@@ -42,6 +40,8 @@ export class Schedule implements AfterViewInit,DoCheck,OnDestroy {
     @Input() defaultDate: any;
     
     @Input() editable: boolean;
+    
+    @Input() droppable: boolean;
     
     @Input() eventStartEditable: boolean;
     
@@ -83,7 +83,11 @@ export class Schedule implements AfterViewInit,DoCheck,OnDestroy {
 
     @Input() eventRender: Function;
     
+    @Input() dayRender: Function;
+    
     @Output() onDayClick: EventEmitter<any> = new EventEmitter();
+    
+    @Output() onDrop: EventEmitter<any> = new EventEmitter();
     
     @Output() onEventClick: EventEmitter<any> = new EventEmitter();
         
@@ -117,8 +121,14 @@ export class Schedule implements AfterViewInit,DoCheck,OnDestroy {
         this.differ = differs.find([]).create(null);
         this.initialized = false;
     }
+    
+    ngAfterViewChecked() {
+        if(!this.initialized && this.el.nativeElement.offsetParent) {
+            this.initialize();
+        }
+    }
 
-    ngAfterViewInit() {
+    initialize() {
         this.schedule = jQuery(this.el.nativeElement.children[0]);
         let options = {
             theme: true,
@@ -135,6 +145,7 @@ export class Schedule implements AfterViewInit,DoCheck,OnDestroy {
             eventLimit: this.eventLimit,
             defaultDate: this.defaultDate,
             editable: this.editable,
+            droppable: this.droppable,
             eventStartEditable: this.eventStartEditable,
             eventDurationEditable: this.eventDurationEditable,
             defaultView: this.defaultView,
@@ -154,6 +165,7 @@ export class Schedule implements AfterViewInit,DoCheck,OnDestroy {
             eventOverlap: this.eventOverlap,
             eventConstraint: this.eventConstraint,
             eventRender: this.eventRender,
+            dayRender: this.dayRender,
             events: (start, end, timezone, callback) => {
                 callback(this.events);
             },
@@ -162,6 +174,13 @@ export class Schedule implements AfterViewInit,DoCheck,OnDestroy {
                     'date': date,
                     'jsEvent': jsEvent,
                     'view': view
+                });
+            },
+            drop: (date, jsEvent, ui, resourceId) => {
+                this.onDrop.emit({
+                    'date': event,
+                    'jsEvent': jsEvent,
+                    'resourceId': resourceId
                 });
             },
             eventClick: (calEvent, jsEvent, view) => {

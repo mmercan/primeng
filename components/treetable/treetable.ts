@@ -18,7 +18,7 @@ import {DomHandler} from '../dom/domhandler';
                 <p-columnBodyTemplateLoader [column]="col" [rowData]="node" *ngIf="col.template"></p-columnBodyTemplateLoader>
             </td>
         </div>
-        <div *ngIf="node.children" class="ui-treetable-row" [style.display]="node.expanded ? 'table-row' : 'none'">
+        <div *ngIf="node.children && node.expanded" class="ui-treetable-row" style="display:table-row">
             <td [attr.colspan]="treeTable.columns.length" class="ui-treetable-child-table-container">
                 <table>
                     <tbody pTreeRow *ngFor="let childNode of node.children" [node]="childNode" [level]="level+1"></tbody>
@@ -86,7 +86,7 @@ export class UITreeRow {
                 <ng-content select="header"></ng-content>
             </div>
             <div class="ui-treetable-tablewrapper">
-                <table class="ui-widget-content" style="border:0 0 1px 0px">
+                <table class="ui-widget-content">
                     <thead>
                         <tr class="ui-state-default">
                             <th #headerCell *ngFor="let col of columns" [ngStyle]="col.style" [class]="col.styleClass" 

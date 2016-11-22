@@ -1,4 +1,4 @@
-import {NgModule,Component,ElementRef,AfterViewInit,OnDestroy,OnInit,Input,Output,SimpleChange,EventEmitter,forwardRef,Renderer,trigger,state,style,transition,animate} from '@angular/core';
+import {NgModule,Component,ElementRef,AfterViewInit,OnDestroy,OnInit,Input,Output,SimpleChange,EventEmitter,forwardRef,Renderer,trigger,state,style,transition,animate,ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {ButtonModule} from '../button/button';
 import {InputTextModule} from '../inputtext/inputtext';
@@ -24,11 +24,13 @@ export interface LocaleSettings {
     selector: 'p-calendar',
     template:  `
         <span [ngClass]="{'ui-calendar':true,'ui-calendar-w-btn':showIcon}" [ngStyle]="style" [class]="styleClass">
-            <input type="text" pInputText *ngIf="!inline" (focus)="onInputFocus($event)" (keydown)="onInputKeydown($event)" (click)="closeOverlay=false" (blur)="onInputBlur($event)"
+            <template [ngIf]="!inline">
+                <input #inputfield type="text" pInputText [value]="inputFieldValue" (focus)="onInputFocus($event)" (keydown)="onInputKeydown($event)" (click)="closeOverlay=false" (blur)="onInputBlur($event)"
                     [readonly]="readonlyInput" (input)="onInput($event)" [ngStyle]="inputStyle" [class]="inputStyleClass" [placeholder]="placeholder||''" [disabled]="disabled"
-                    ><button type="button" [icon]="icon" pButton *ngIf="showIcon" (click)="onButtonClick($event)"
+                    ><button type="button" [icon]="icon" pButton *ngIf="showIcon" (click)="onButtonClick($event,inputfield)"
                     [ngClass]="{'ui-datepicker-trigger':true,'ui-state-disabled':disabled}" [disabled]="disabled"></button>
-            <div class="ui-datepicker ui-widget ui-widget-content ui-helper-clearfix ui-corner-all" [ngClass]="{'ui-datepicker-inline':inline,'ui-shadow':!inline,'ui-state-disabled':disabled}" 
+            </template>
+            <div #datepicker class="ui-datepicker ui-widget ui-widget-content ui-helper-clearfix ui-corner-all" [ngClass]="{'ui-datepicker-inline':inline,'ui-shadow':!inline,'ui-state-disabled':disabled}" 
                 [ngStyle]="{'display': inline ? 'inline-block' : (overlayVisible ? 'block' : 'none')}" (click)="onDatePickerClick($event)" [@overlayState]="inline ? 'visible' : (overlayVisible ? 'visible' : 'hidden')">
                 <div class="ui-datepicker-header ui-widget-header ui-helper-clearfix ui-corner-all" *ngIf="!timeOnly">
                     <a class="ui-datepicker-prev ui-corner-all" href="#" (click)="prevMonth($event)" (mouseenter)="hoverPrev=true" (mouseleave)="hoverPrev=false"
@@ -123,6 +125,10 @@ export interface LocaleSettings {
             transition('hidden => visible', animate('400ms ease-out'))
         ])
     ],
+    host: {
+        '[class.ui-inputwrapper-filled]': 'filled',
+        '[class.ui-inputwrapper-focus]': 'focus'
+    },
     providers: [DomHandler,CALENDAR_VALUE_ACCESSOR]
 })
 export class Calendar implements AfterViewInit,OnInit,OnDestroy,ControlValueAccessor {
@@ -175,6 +181,8 @@ export class Calendar implements AfterViewInit,OnInit,OnDestroy,ControlValueAcce
     
     @Input() timeOnly: boolean;
     
+    @Input() dataType: string = 'date';
+    
     @Output() onBlur: EventEmitter<any> = new EventEmitter();
     
     @Output() onSelect: EventEmitter<any> = new EventEmitter();
@@ -187,6 +195,8 @@ export class Calendar implements AfterViewInit,OnInit,OnDestroy,ControlValueAcce
         monthNames: [ "January","February","March","April","May","June","July","August","September","October","November","December" ],
         monthNamesShort: [ "Jan", "Feb", "Mar", "Apr", "May", "Jun","Jul", "Aug", "Sep", "Oct", "Nov", "Dec" ]
     };
+    
+    @ViewChild('datepicker') overlayViewChild: ElementRef;
     
     value: Date;
     
@@ -208,8 +218,6 @@ export class Calendar implements AfterViewInit,OnInit,OnDestroy,ControlValueAcce
     
     overlay: HTMLDivElement;
     
-    inputfield: HTMLInputElement;
-    
     overlayVisible: boolean;
     
     closeOverlay: boolean = true;
@@ -227,6 +235,12 @@ export class Calendar implements AfterViewInit,OnInit,OnDestroy,ControlValueAcce
     ticksTo1970: number;
     
     yearOptions: number[];
+    
+    focus: boolean;
+    
+    filled: boolean;
+
+    inputFieldValue: string = null;
 
     constructor(public el: ElementRef, public domHandler: DomHandler,public renderer: Renderer) {}
 
@@ -282,12 +296,8 @@ export class Calendar implements AfterViewInit,OnInit,OnDestroy,ControlValueAcce
     }
     
     ngAfterViewInit() {
-        this.overlay = this.domHandler.findSingle(this.el.nativeElement, '.ui-datepicker');
-        
-        if(!this.inline) {
-            this.inputfield = this.el.nativeElement.children[0].children[0];
-        }
-        
+        this.overlay = <HTMLDivElement> this.overlayViewChild.nativeElement;
+                
         if(!this.inline && this.appendTo) {
             if(this.appendTo === 'body')
                 document.body.appendChild(this.overlay);
@@ -397,26 +407,26 @@ export class Calendar implements AfterViewInit,OnInit,OnDestroy,ControlValueAcce
     }
     
     updateInputfield() {
-        if(this.inputfield) {
-            if(this.value) {
-                let formattedValue;
-                
-                if(this.timeOnly) {
-                    formattedValue = this.formatTime(this.value);
-                }
-                else {
-                    formattedValue = this.formatDate(this.value, this.dateFormat);
-                    if(this.showTime) {
-                        formattedValue += ' ' + this.formatTime(this.value);
-                    }
-                }
-                
-                this.inputfield.value = formattedValue;
+        if(this.value) {
+            let formattedValue;
+            
+            if(this.timeOnly) {
+                formattedValue = this.formatTime(this.value);
             }
             else {
-                this.inputfield.value = '';
+                formattedValue = this.formatDate(this.value, this.dateFormat);
+                if(this.showTime) {
+                    formattedValue += ' ' + this.formatTime(this.value);
+                }
             }
+            
+            this.inputFieldValue = formattedValue;
         }
+        else {
+            this.inputFieldValue = '';
+        }
+        
+        this.updateFilledState();
     }
     
     selectDate(dateMeta) {
@@ -429,8 +439,15 @@ export class Calendar implements AfterViewInit,OnInit,OnDestroy,ControlValueAcce
 
             this.value.setMinutes(this.currentMinute);
         }
-        this.onModelChange(this.value);
+        this.updateModel();
         this.onSelect.emit(this.value);
+    }
+    
+    updateModel() {
+        if(this.dataType == 'date')
+            this.onModelChange(this.value);
+        else if(this.dataType == 'string')
+            this.onModelChange(this.formatDate(this.value, this.dateFormat));
     }
     
     getFirstDayOfMonthIndex(month: number, year: number) {
@@ -538,29 +555,29 @@ export class Calendar implements AfterViewInit,OnInit,OnDestroy,ControlValueAcce
     }
     
     onInputFocus(event) {
+        this.focus = true;
         this.showOverlay(event);
     }
     
-    onButtonClick(event) {
+    onInputBlur(event) {
+        this.focus = false;
+        this.onBlur.emit(event);
+        this.onModelTouched();
+    }
+    
+    onButtonClick(event,inputfield) {
         this.closeOverlay = false;
         
-        if(!this.overlay.offsetParent) {
-            this.inputfield.focus();
-        }
-        else {
+        if(!this.overlay.offsetParent)
+            inputfield.focus();
+        else
             this.closeOverlay = true;
-        }
     }
     
     onInputKeydown(event) {
         if(event.keyCode === 9) {
             this.overlayVisible = false;
         }
-    }
-    
-    onInputBlur(event) {
-        this.onBlur.emit(event);
-        this.onModelTouched();
     }
     
     onMonthDropdownChange(m: string) {
@@ -641,7 +658,8 @@ export class Calendar implements AfterViewInit,OnInit,OnDestroy,ControlValueAcce
             this.value.setHours(this.currentHour);
         
         this.value.setMinutes(this.currentMinute);
-        this.onModelChange(this.value);
+        this.updateModel();
+        this.onSelect.emit(this.value);
         this.updateInputfield();
     }
     
@@ -653,25 +671,7 @@ export class Calendar implements AfterViewInit,OnInit,OnDestroy,ControlValueAcce
     
     onInput(event) {
         try {
-            let rawValue = event.target.value;
-            let parsedValue;
-            let parts: string[] = rawValue.split(' ');
-            
-            if(this.timeOnly) {
-                parsedValue = new Date();
-                this.populateTime(parsedValue, parts[0], parts[1]);
-            }
-            else {
-                if(this.showTime) {
-                    parsedValue = this.parseDate(parts[0], this.dateFormat);
-                    this.populateTime(parsedValue, parts[1], parts[2]);
-                }
-                else {
-                     parsedValue = this.parseDate(event.target.value, this.dateFormat);
-                }
-            }
-            
-            this.value = parsedValue;
+            this.value = this.parseValueFromString(event.target.value);
             this.updateUI();
         } 
         catch(err) {
@@ -679,7 +679,29 @@ export class Calendar implements AfterViewInit,OnInit,OnDestroy,ControlValueAcce
             this.value = null;
         }
         
-        this.onModelChange(this.value);
+        this.updateModel();
+        this.updateFilledState();
+    }
+    
+    parseValueFromString(text: string): Date {
+        let dateValue;
+        let parts: string[] = text.split(' ');
+        
+        if(this.timeOnly) {
+            dateValue = new Date();
+            this.populateTime(dateValue, parts[0], parts[1]);
+        }
+        else {
+            if(this.showTime) {
+                dateValue = this.parseDate(parts[0], this.dateFormat);
+                this.populateTime(dateValue, parts[1], parts[2]);
+            }
+            else {
+                 dateValue = this.parseDate(text, this.dateFormat);
+            }
+        }
+        
+        return dateValue;
     }
     
     populateTime(value, timeString, ampm) {
@@ -724,6 +746,9 @@ export class Calendar implements AfterViewInit,OnInit,OnDestroy,ControlValueAcce
 
     writeValue(value: any) : void {
         this.value = value;
+        if(this.value && typeof this.value === 'string') {
+            this.value = this.parseValueFromString(this.value);
+        }
         
         this.updateInputfield();
         this.updateUI();
@@ -1032,6 +1057,10 @@ export class Calendar implements AfterViewInit,OnInit,OnDestroy,ControlValueAcce
         }
         date.setHours(date.getHours() > 12 ? date.getHours() + 2 : 0);
         return date;
+    }
+    
+    updateFilledState() {
+        this.filled = this.inputFieldValue && this.inputFieldValue != '';
     }
         
     ngOnDestroy() {

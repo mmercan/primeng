@@ -18,12 +18,14 @@ upload.php
 tsconfig.json
 tsconfig-aot.json
 webpack.config.js
+config
 gulpfile.js
 
 # aot
 aot
 
 # misc
+.github
 *.log
 prod
 
