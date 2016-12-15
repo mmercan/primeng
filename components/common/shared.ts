@@ -23,7 +23,19 @@ export class PrimeTemplate {
     
     @Input() type: string;
     
+    @Input('pTemplate') name: string;
+    
     constructor(public template: TemplateRef<any>) {}
+    
+    getType(): string {
+        if(this.type) {
+            console.log('Defining a pTemplate with type property is deprecated use pTemplate="type" instead.');
+            return this.type;
+        }
+        else {
+            return this.name;
+        }
+    }
 }
 
 @Directive({
@@ -33,13 +45,16 @@ export class TemplateWrapper implements OnInit {
     
     @Input() item: any;
     
+    @Input() index: number;
+    
     @Input('pTemplateWrapper') templateRef: TemplateRef<any>;
     
     constructor(public viewContainer: ViewContainerRef) {}
     
     ngOnInit() {
         let view = this.viewContainer.createEmbeddedView(this.templateRef, {
-            '\$implicit': this.item
+            '\$implicit': this.item,
+            'index': this.index
         });
     }
 }
@@ -71,10 +86,11 @@ export class Column implements AfterContentInit{
     public headerTemplate: TemplateRef<any>;
     public bodyTemplate: TemplateRef<any>;    
     public footerTemplate: TemplateRef<any>;
+    public filterTemplate: TemplateRef<any>;
     
     ngAfterContentInit():void {
         this.templates.forEach((item) => {
-            switch(item.type) {
+            switch(item.getType()) {
                 case 'header':
                     this.headerTemplate = item.template;
                 break;
@@ -85,6 +101,10 @@ export class Column implements AfterContentInit{
                 
                 case 'footer':
                     this.footerTemplate = item.template;
+                break;
+                
+                case 'filter':
+                    this.filterTemplate = item.template;
                 break;
                 
                 default:
@@ -181,25 +201,46 @@ export class ColumnFooterTemplateLoader {
 }
 
 @Component({
+    selector: 'p-columnFilterTemplateLoader',
+    template: ``
+})
+export class ColumnFilterTemplateLoader {
+        
+    @Input() column: any;
+            
+    constructor(public viewContainer: ViewContainerRef) {}
+    
+    ngOnInit() {
+        let view = this.viewContainer.createEmbeddedView(this.column.filterTemplate, {
+            '\$implicit': this.column
+        });
+    }
+}
+
+@Component({
     selector: 'p-templateLoader',
     template: ``
 })
 export class TemplateLoader {
         
     @Input() template: TemplateRef<any>;
+    
+    @Input() data: any;
             
     constructor(public viewContainer: ViewContainerRef) {}
     
     ngOnInit() {
         if(this.template) {
-            this.viewContainer.createEmbeddedView(this.template, {});
+            let view = this.viewContainer.createEmbeddedView(this.template, {
+                '\$implicit': this.data
+            });
         }
     }
 }
 
 @NgModule({
     imports: [CommonModule],
-    exports: [Header,Footer,Column,TemplateWrapper,ColumnHeaderTemplateLoader,ColumnBodyTemplateLoader,ColumnFooterTemplateLoader,PrimeTemplate,TemplateLoader,Row,HeaderColumnGroup,FooterColumnGroup],
-    declarations: [Header,Footer,Column,TemplateWrapper,ColumnHeaderTemplateLoader,ColumnBodyTemplateLoader,ColumnFooterTemplateLoader,PrimeTemplate,TemplateLoader,Row,HeaderColumnGroup,FooterColumnGroup]
+    exports: [Header,Footer,Column,TemplateWrapper,ColumnHeaderTemplateLoader,ColumnBodyTemplateLoader,ColumnFooterTemplateLoader,ColumnFilterTemplateLoader,PrimeTemplate,TemplateLoader,Row,HeaderColumnGroup,FooterColumnGroup],
+    declarations: [Header,Footer,Column,TemplateWrapper,ColumnHeaderTemplateLoader,ColumnBodyTemplateLoader,ColumnFooterTemplateLoader,ColumnFilterTemplateLoader,PrimeTemplate,TemplateLoader,Row,HeaderColumnGroup,FooterColumnGroup]
 })
 export class SharedModule { }
