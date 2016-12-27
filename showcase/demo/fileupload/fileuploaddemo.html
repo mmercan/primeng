@@ -1,12 +1,12 @@
-<div class="ContentSideSections">
+<div class="content-section">
     <div>
-        <span class="fontSize30 TextShadow orange marginBottom20 dispBlock">FileUpload</span>
-        <span class="defaultText">FileUpload is an advanced uploader with dragdrop support, multi file uploads, auto uploading, progress tracking and
+        <span class="feature-title">FileUpload</span>
+        <span>FileUpload is an advanced uploader with dragdrop support, multi file uploads, auto uploading, progress tracking and
             validations.</span>
     </div>
 </div>
 
-<div class="ContentSideSections Implementation">
+<div class="content-section implementation">
     <p-growl [value]="msgs"></p-growl>
         
     <p-fileUpload name="demo[]" url="./upload.php" (onUpload)="onUpload($event)" 
@@ -19,7 +19,7 @@
     </p-fileUpload>
 </div>
 
-<div class="ContentSideSections Source">
+<div class="content-section source">
     <p-tabView effect="fade">
         <p-tabPanel header="Documentation">
             <h3>Import</h3>
@@ -221,7 +221,14 @@ import &#123;FileUploadModule&#125; from 'primeng/primeng';
                             <td>event.xhr: XmlHttpRequest instance. <br/>
                                 event.formData: FormData object.</td>
                             <td>Callback to invoke before file upload begins to customize the request
-                                such as adding header and post parameters.</td>
+                                such as post parameters before the files.</td>
+                        </tr>
+						<tr>
+                            <td>onBeforeSend</td>
+                            <td>event.xhr: XmlHttpRequest instance. <br/>
+                                event.formData: FormData object.</td>
+                            <td>Callback to invoke before file send begins to customize the request
+                                such as adding headers.</td>
                         </tr>
                         <tr>
                             <td>onUpload</td>
