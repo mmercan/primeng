@@ -1,5 +1,5 @@
 import {NgModule,Component,ElementRef,OnInit,AfterViewInit,AfterContentInit,AfterViewChecked,OnDestroy,Input,Output,Renderer2,EventEmitter,ContentChildren,
-        QueryList,ViewChild,TemplateRef,forwardRef,ChangeDetectorRef} from '@angular/core';
+        QueryList,ViewChild,TemplateRef,forwardRef,ChangeDetectorRef,NgZone} from '@angular/core';
 import {trigger,state,style,transition,animate} from '@angular/animations';
 import {CommonModule} from '@angular/common';
 import {SelectItem} from '../common/selectitem';
@@ -26,7 +26,8 @@ export const DROPDOWN_VALUE_ACCESSOR: any = {
                 </select>
             </div>
             <div class="ui-helper-hidden-accessible">
-                <input #in [attr.id]="inputId" type="text" [attr.aria-label]="selectedOption ? selectedOption.label : ' '" readonly (focus)="onInputFocus($event)" (blur)="onInputBlur($event)" (keydown)="onKeydown($event)" [disabled]="disabled" [attr.tabindex]="tabindex">
+                <input #in [attr.id]="inputId" type="text" [attr.aria-label]="selectedOption ? selectedOption.label : ' '" readonly (focus)="onInputFocus($event)" role="listbox"
+                    (blur)="onInputBlur($event)" (keydown)="onKeydown($event)" [disabled]="disabled" [attr.tabindex]="tabindex" [attr.autofocus]="autofocus">
             </div>
             <label [ngClass]="{'ui-dropdown-label ui-inputtext ui-corner-all':true,'ui-dropdown-label-empty':!label}" *ngIf="!editable">{{label||'empty'}}</label>
             <input #editableInput type="text" [attr.aria-label]="selectedOption ? selectedOption.label : ' '" class="ui-dropdown-label ui-inputtext ui-corner-all" *ngIf="editable" [disabled]="disabled" [attr.placeholder]="placeholder"
@@ -38,7 +39,7 @@ export const DROPDOWN_VALUE_ACCESSOR: any = {
                 [style.display]="panelVisible ? 'block' : 'none'" [ngStyle]="panelStyle" [class]="panelStyleClass">
                 <div *ngIf="filter" class="ui-dropdown-filter-container" (input)="onFilter($event)" (click)="$event.stopPropagation()">
                     <input #filter type="text" autocomplete="off" class="ui-dropdown-filter ui-inputtext ui-widget ui-state-default ui-corner-all" [attr.placeholder]="filterPlaceholder"
-                    (keydown.enter)="$event.preventDefault()">
+                    (keydown.enter)="$event.preventDefault()" (keydown)="onKeydown($event)">
                     <span class="fa fa-search"></span>
                 </div>
                 <div #itemswrapper class="ui-dropdown-items-wrapper" [style.max-height]="scrollHeight||'auto'">
@@ -109,6 +110,8 @@ export class Dropdown implements OnInit,AfterViewInit,AfterContentInit,AfterView
     
     @Input() lazy: boolean = true;
     
+    @Input() autofocus: boolean;
+    
     @Output() onChange: EventEmitter<any> = new EventEmitter();
     
     @Output() onFocus: EventEmitter<any> = new EventEmitter();
@@ -173,7 +176,8 @@ export class Dropdown implements OnInit,AfterViewInit,AfterContentInit,AfterView
     
     public filterValue: string;
         
-    constructor(public el: ElementRef, public domHandler: DomHandler, public renderer: Renderer2, private cd: ChangeDetectorRef, public objectUtils: ObjectUtils) {}
+    constructor(public el: ElementRef, public domHandler: DomHandler, public renderer: Renderer2, private cd: ChangeDetectorRef, 
+                public objectUtils: ObjectUtils, public zone: NgZone) {}
     
     ngAfterContentInit() {
         this.templates.forEach((item) => {
@@ -271,7 +275,12 @@ export class Dropdown implements OnInit,AfterViewInit,AfterContentInit,AfterView
         if(this.optionsChanged && this.panelVisible) {
             this.optionsChanged = false;
             
-            setTimeout(() => this.alignPanel(), 1);
+            this.zone.runOutsideAngular(() => {
+                setTimeout(() => {
+                    this.updateDimensions();
+                    this.alignPanel();
+                }, 1); 
+            });
         }
         
         if(this.selectedOptionUpdated && this.itemsWrapper) {
@@ -433,16 +442,15 @@ export class Dropdown implements OnInit,AfterViewInit,AfterContentInit,AfterView
                     this.show();
                 }
                 else {
-                    if(selectedItemIndex != -1) {
+                    if(selectedItemIndex !== -1) {
                         let nextItemIndex = selectedItemIndex + 1;
                         if(nextItemIndex != (this.optionsToDisplay.length)) {
-                            this.selectedOption = this.optionsToDisplay[nextItemIndex];
+                            this.selectItem(event, this.optionsToDisplay[nextItemIndex]);
                             this.selectedOptionUpdated = true;
-                            this.selectItem(event, this.selectedOption);
                         }
                     }
                     else if(this.optionsToDisplay) {
-                        this.selectedOption = this.optionsToDisplay[0];
+                        this.selectItem(event, this.optionsToDisplay[0]);
                     }                    
                 }
                 
@@ -453,10 +461,9 @@ export class Dropdown implements OnInit,AfterViewInit,AfterContentInit,AfterView
             //up
             case 38:
                 if(selectedItemIndex > 0) {
-                    let prevItemIndex = selectedItemIndex - 1;
-                    this.selectedOption = this.optionsToDisplay[prevItemIndex];
+                    let prevItemIndex = selectedItemIndex - 1;                    
+                    this.selectItem(event, this.optionsToDisplay[prevItemIndex]);
                     this.selectedOptionUpdated = true;
-                    this.selectItem(event, this.selectedOption);
                 }
                 
                 event.preventDefault();
@@ -464,9 +471,11 @@ export class Dropdown implements OnInit,AfterViewInit,AfterContentInit,AfterView
 
             //space
             case 32:
-                this.show();
-                
-                event.preventDefault();
+            case 32:
+                if(!this.panelVisible){
+                    this.show();
+                    event.preventDefault();
+                }
             break;
             
             //enter
