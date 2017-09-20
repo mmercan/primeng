@@ -1,5 +1,12 @@
-import {NgModule,Component,ElementRef,Input,Output,SimpleChange,EventEmitter} from '@angular/core';
-import {CommonModule} from '@angular/common';
+import { NgModule, Component, ElementRef, Input, Output, SimpleChange, EventEmitter, forwardRef, ChangeDetectorRef } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { NG_VALUE_ACCESSOR, ControlValueAccessor } from '@angular/forms';
+
+export const PAGINATOR_VALUE_ACCESSOR: any = {
+    provide: NG_VALUE_ACCESSOR,
+    useExisting: forwardRef(() => Paginator),
+    multi: true
+};
 
 @Component({
     selector: 'p-paginator',
@@ -30,9 +37,10 @@ import {CommonModule} from '@angular/common';
                 <option *ngFor="let opt of rowsPerPageOptions" [value]="opt" [selected]="rows == opt">{{opt}}</option>
             </select>
         </div>
-    `
+    `,
+    providers: [PAGINATOR_VALUE_ACCESSOR]
 })
-export class Paginator {
+export class Paginator implements ControlValueAccessor {
 
     @Input() pageLinkSize: number = 5;
 
@@ -49,25 +57,70 @@ export class Paginator {
     public pageLinks: number[];
 
     public _totalRecords: number = 0;
-
+    public _itemSource: any[];
+    public _pagedItemSource: any[];
     public _first: number = 0;
 
     public _rows: number = 0;
+
+    constructor(private cd: ChangeDetectorRef) {
+
+    }
 
     @Input() get totalRecords(): number {
         return this._totalRecords;
     }
 
-    set totalRecords(val:number) {
+    set totalRecords(val: number) {
         this._totalRecords = val;
         this.updatePageLinks();
+    }
+
+    @Input() get itemSource(): any[] {
+        return this._itemSource;
+    }
+
+    set itemSource(val: any[]) {
+        if (val && val.length) {
+            if (!this._itemSource || val.length !== this._itemSource.length) {
+                this._itemSource = val;
+                this.totalRecords = this._itemSource.length;
+                this.changePage(0);
+            } else {
+                this._itemSource = val;
+                this.totalRecords = this._itemSource.length;
+            }
+        }
+    }
+    public onModelChange: Function = () => { };
+
+    public onModelTouched: Function = () => { };
+
+    get value(): any {
+        return this._pagedItemSource;
+    }
+    writeValue(value: any): void {
+        this._pagedItemSource = value;
+        this.cd.markForCheck();
+    }
+
+    registerOnChange(fn: Function): void {
+        this.onModelChange = fn;
+    }
+
+    registerOnTouched(fn: Function): void {
+        this.onModelTouched = fn;
+    }
+
+    setDisabledState(val: boolean): void {
+        // this.disabled = val;
     }
 
     @Input() get first(): number {
         return this._first;
     }
 
-    set first(val:number) {
+    set first(val: number) {
         this._first = val;
         this.updatePageLinks();
     }
@@ -76,7 +129,7 @@ export class Paginator {
         return this._rows;
     }
 
-    set rows(val:number) {
+    set rows(val: number) {
         this._rows = val;
         this.updatePageLinks();
     }
@@ -90,16 +143,16 @@ export class Paginator {
     }
 
     getPageCount() {
-        return Math.ceil(this.totalRecords/this.rows)||1;
+        return Math.ceil(this.totalRecords / this.rows) || 1;
     }
 
     calculatePageLinkBoundaries() {
         let numberOfPages = this.getPageCount(),
-        visiblePages = Math.min(this.pageLinkSize, numberOfPages);
+            visiblePages = Math.min(this.pageLinkSize, numberOfPages);
 
         //calculate range, keep current in middle if necessary
         let start = Math.max(0, Math.ceil(this.getPage() - ((visiblePages) / 2))),
-        end = Math.min(numberOfPages - 1, start + visiblePages - 1);
+            end = Math.min(numberOfPages - 1, start + visiblePages - 1);
 
         //check when approaching to last page
         var delta = this.pageLinkSize - (end - start + 1);
@@ -111,18 +164,18 @@ export class Paginator {
     updatePageLinks() {
         this.pageLinks = [];
         let boundaries = this.calculatePageLinkBoundaries(),
-        start = boundaries[0],
-        end = boundaries[1];
+            start = boundaries[0],
+            end = boundaries[1];
 
-        for(let i = start; i <= end; i++) {
+        for (let i = start; i <= end; i++) {
             this.pageLinks.push(i + 1);
         }
     }
 
-    changePage(p :number) {
+    changePage(p: number) {
         var pc = this.getPageCount();
 
-        if(p >= 0 && p < pc) {
+        if (p >= 0 && p < pc) {
             this.first = this.rows * p;
             var state = {
                 page: p,
@@ -133,6 +186,14 @@ export class Paginator {
             this.updatePageLinks();
 
             this.onPageChange.emit(state);
+            this.calculatePagedItemSource(state.page);
+        }
+    }
+
+    calculatePagedItemSource(pagenumber: number) {
+        if (this._itemSource && this._itemSource.length && this.rows) {
+            this._pagedItemSource = this._itemSource.slice(pagenumber * this.rows, (pagenumber + 1) * this.rows);
+            this.onModelChange(this._pagedItemSource);
         }
     }
 
@@ -141,11 +202,11 @@ export class Paginator {
     }
 
     changePageToFirst(event) {
-      if(!this.isFirstPage()){
-          this.changePage(0);
-      }
+        if (!this.isFirstPage()) {
+            this.changePage(0);
+        }
 
-      event.preventDefault();
+        event.preventDefault();
     }
 
     changePageToPrev(event) {
@@ -154,16 +215,16 @@ export class Paginator {
     }
 
     changePageToNext(event) {
-        this.changePage(this.getPage()  + 1);
+        this.changePage(this.getPage() + 1);
         event.preventDefault();
     }
 
     changePageToLast(event) {
-      if(!this.isLastPage()){
-          this.changePage(this.getPageCount() - 1);
-      }
+        if (!this.isLastPage()) {
+            this.changePage(this.getPageCount() - 1);
+        }
 
-      event.preventDefault();
+        event.preventDefault();
     }
 
     onPageLinkClick(event, page) {
