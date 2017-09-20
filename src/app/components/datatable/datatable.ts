@@ -337,7 +337,7 @@ export class ScrollableView implements AfterViewInit,AfterViewChecked,OnDestroy 
              let row = this.domHandler.findSingle(this.scrollTable, 'tr.ui-widget-content:not(.ui-datatable-emptymessage-row)');
              if(row) {
                  this.rowHeight = this.domHandler.getOuterHeight(row);
-             }             
+             }          
         }
         
         if(!this.frozen) {
@@ -640,6 +640,8 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
 
     @Input() loadingIcon: string = 'fa-circle-o-notch';
     
+    @Input() enableLoader: boolean = true;
+    
     @Input() virtualScrollDelay: number = 500;
     
     @Output() valueChange: EventEmitter<any[]> = new EventEmitter<any[]>();
@@ -759,6 +761,8 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
     initialized: boolean;
     
     virtualScrollTimer: any;
+    
+    virtualScrollableTableWrapper: HTMLDivElement;
         
     constructor(public el: ElementRef, public domHandler: DomHandler, public differs: IterableDiffers,
             public renderer: Renderer2, public changeDetector: ChangeDetectorRef, public objectUtils: ObjectUtils,
@@ -814,12 +818,11 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
             this.columnsChanged = false;
         }
         
-        if(this.totalRecordsChanged && this.virtualScroll) {
-            let scrollableTable = this.domHandler.findSingle(this.el.nativeElement, 'div.ui-datatable-scrollable-table-wrapper');
-            let row = this.domHandler.findSingle(scrollableTable,'tr.ui-widget-content');
+        if(this.totalRecordsChanged && this.virtualScroll && this.virtualScrollableTableWrapper && this.virtualScrollableTableWrapper.offsetParent) {
+            let row = this.domHandler.findSingle(this.virtualScrollableTableWrapper,'tr.ui-widget-content');
             let rowHeight = this.domHandler.getOuterHeight(row);
             this.virtualTableHeight = this._totalRecords * rowHeight;
-            scrollableTable.style.height = this.virtualTableHeight + 'px';
+            this.virtualScrollableTableWrapper.style.height = this.virtualTableHeight + 'px';
             this.totalRecordsChanged = false;
         }
     }
@@ -836,6 +839,8 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
                 }, this.filterDelay);
             });
         }
+        
+        this.virtualScrollableTableWrapper = this.domHandler.findSingle(this.el.nativeElement, 'div.ui-datatable-scrollable-table-wrapper');
         
         this.initialized = true;
     }
@@ -907,7 +912,9 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
     }
     
     handleDataChange() {
-        this.loading = false;
+        if(this.lazy && this.enableLoader) {
+            this.loading = false;
+        }        
         
         if(this.paginator) {
             this.updatePaginator();
@@ -2258,7 +2265,10 @@ export class DataTable implements AfterViewChecked,AfterViewInit,AfterContentIni
     }
 
     createLazyLoadMetadata(): LazyLoadEvent {
-        this.loading = true;
+        if(this.enableLoader) {
+            this.loading = true;
+        }
+        
         return {
             first: this.first,
             rows: this.virtualScroll ? this.rows * 2 : this.rows,
