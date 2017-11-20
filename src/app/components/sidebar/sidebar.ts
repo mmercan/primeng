@@ -1,4 +1,4 @@
-import {NgModule,Component,AfterViewInit,AfterViewChecked,Input,Output,EventEmitter,ViewChild,ElementRef,Renderer2} from '@angular/core';
+import {NgModule,Component,AfterViewInit,AfterViewChecked,OnDestroy,Input,Output,EventEmitter,ViewChild,ElementRef,Renderer2} from '@angular/core';
 import {trigger, state, style, transition, animate} from '@angular/animations';
 import {CommonModule} from '@angular/common';
 import {DomHandler} from '../dom/domhandler';
@@ -7,7 +7,9 @@ import {DomHandler} from '../dom/domhandler';
     selector: 'p-sidebar',
     template: `
         <div #container [ngClass]="{'ui-sidebar ui-widget ui-widget-content ui-shadow':true, 'ui-sidebar-active': visible, 
-            'ui-sidebar-left': (position === 'left'), 'ui-sidebar-right': (position === 'right'), 'ui-sidebar-full': fullScreen}"
+            'ui-sidebar-left': (position === 'left'), 'ui-sidebar-right': (position === 'right'),
+            'ui-sidebar-top': (position === 'top'), 'ui-sidebar-bottom': (position === 'bottom'), 
+            'ui-sidebar-full': fullScreen}"
             [@panelState]="visible ? 'visible' : 'hidden'" [ngStyle]="style" [class]="styleClass">
             <a [ngClass]="{'ui-sidebar-close ui-corner-all':true}" href="#" role="button" (click)="close($event)">
                 <span class="fa fa-fw fa-close"></span>
@@ -29,7 +31,7 @@ import {DomHandler} from '../dom/domhandler';
     ],
     providers: [DomHandler]
 })
-export class Sidebar implements AfterViewInit,AfterViewChecked {
+export class Sidebar implements AfterViewInit, AfterViewChecked, OnDestroy {
     
     @Input() position: string = 'left';
     
@@ -43,6 +45,10 @@ export class Sidebar implements AfterViewInit,AfterViewChecked {
         
     @Input() styleClass: string;
     
+    @Input() autoZIndex: boolean = true;
+    
+    @Input() baseZIndex: number = 0;
+        
     @ViewChild('container') containerViewChild: ElementRef;
     
     @Output() onShow: EventEmitter<any> = new EventEmitter();
@@ -108,7 +114,9 @@ export class Sidebar implements AfterViewInit,AfterViewChecked {
     
     show() {
         this.executePostDisplayActions = true;
-        this.containerViewChild.nativeElement.style.zIndex = String(++DomHandler.zindex);
+        if(this.autoZIndex) {
+            this.containerViewChild.nativeElement.style.zIndex = String(this.baseZIndex + (++DomHandler.zindex));
+        }
         this.enableModality();
     }
     
