@@ -212,11 +212,11 @@ export class MyComponent &#123;
       <h3>ItemSource</h3>
       <div class="content-section implementation">
 
-        <ul>
+        <!-- <ul>
           <li *ngFor="let car of cars">{{car |json}}</li>
-        </ul>
-
-        <p-paginator [itemSource]="cars" rows="6" [(ngModel)]="pagedCars"></p-paginator>
+        </ul> -->
+        <input type="text" [(ngModel)]="filter.brand" class="form-control" name="search" id="filter" aria-describedby="helpId" placeholder="filter">
+        <p-paginator [itemSource]="cars | filterBy:filter" rows="10" [(ngModel)]="pagedCars"></p-paginator>
 
         <p *ngIf="!pagedCars">Empty Paged Cars</p>
         <ul>

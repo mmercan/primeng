@@ -7,6 +7,7 @@ import { TabViewModule } from '../../../components/tabview/tabview';
 import { CodeHighlighterModule } from '../../../components/codehighlighter/codehighlighter';
 import { CarService } from '../../service/carservice';
 import { FormsModule } from '@angular/forms';
+import { Ng4FilterPipe } from '../../service/filter/ng4-filter.pipe';
 @NgModule({
 	imports: [
 		CommonModule,
@@ -18,7 +19,8 @@ import { FormsModule } from '@angular/forms';
 	],
 	providers: [CarService],
 	declarations: [
-		PaginatorDemo
+		PaginatorDemo,
+		Ng4FilterPipe
 	]
 })
 export class PaginatorDemoModule { }
