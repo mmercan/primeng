@@ -69,4 +69,15 @@ export class CarService {
       .then(data => { return data; });
 >>>>>>> d21992e62584de0db47e5db0c2f49371ad6b2ed0
     }
+<<<<<<< HEAD
 }
+=======
+
+  getCarsHuge() {
+    return this.http.get<any>('assets/showcase/data/cars-huge.json')
+      .toPromise()
+      .then(res => <Car[]>res.data)
+      .then(data => { return data; });
+  }
+}
+>>>>>>> 48aede36a715967cf7fe25b0a237431b330d0b81
