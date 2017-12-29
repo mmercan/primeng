@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { NgModule, Component, ElementRef, Input, Output, SimpleChange, EventEmitter, forwardRef, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NG_VALUE_ACCESSOR, ControlValueAccessor } from '@angular/forms';
@@ -10,6 +11,9 @@ export const PAGINATOR_VALUE_ACCESSOR: any = {
 };
 =======
 import {NgModule,Component,ElementRef,Input,Output,SimpleChange,EventEmitter,TemplateRef} from '@angular/core';
+=======
+import {NgModule,Component,OnInit,ElementRef,Input,Output,SimpleChange,EventEmitter,TemplateRef} from '@angular/core';
+>>>>>>> 6f85eb18371e35cd1b0949ff866dc4381dadb669
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {DropdownModule} from '../dropdown/dropdown';
@@ -23,7 +27,7 @@ import {SharedModule} from '../common/shared';
         <div [class]="styleClass" [ngStyle]="style" [ngClass]="'ui-paginator ui-widget ui-widget-header ui-unselectable-text ui-helper-clearfix'"
             *ngIf="alwaysShow ? true : (pageLinks && pageLinks.length > 1)">
             <div class="ui-paginator-left-content" *ngIf="templateLeft">
-                <p-templateLoader [template]="templateLeft"></p-templateLoader>
+                <p-templateLoader [template]="templateLeft" [data]="paginatorState"></p-templateLoader>
             </div>
             <a href="#" class="ui-paginator-first ui-paginator-element ui-state-default ui-corner-all"
                     (click)="changePageToFirst($event)" [ngClass]="{'ui-state-disabled':isFirstPage()}" [tabindex]="isFirstPage() ? -1 : null">
@@ -48,13 +52,17 @@ import {SharedModule} from '../common/shared';
             <p-dropdown [options]="rowsPerPageItems" [(ngModel)]="rows" *ngIf="rowsPerPageOptions" 
                 (onChange)="onRppChange($event)" [lazy]="false" [autoWidth]="false"></p-dropdown>
             <div class="ui-paginator-right-content" *ngIf="templateRight">
-                <p-templateLoader [template]="templateRight"></p-templateLoader>
+                <p-templateLoader [template]="templateRight" [data]="paginatorState"></p-templateLoader>
             </div>
         </div>
     `,
     providers: [PAGINATOR_VALUE_ACCESSOR]
 })
+<<<<<<< HEAD
 export class Paginator implements ControlValueAccessor {
+=======
+export class Paginator implements OnInit {
+>>>>>>> 6f85eb18371e35cd1b0949ff866dc4381dadb669
 
     @Input() pageLinkSize: number = 5;
 
@@ -88,6 +96,12 @@ export class Paginator implements ControlValueAccessor {
     _rowsPerPageOptions: number[];
     
     rowsPerPageItems: SelectItem[];
+    
+    paginatorState: any;
+    
+    ngOnInit() {
+        this.updatePaginatorState();
+    }
 
     constructor(private cd: ChangeDetectorRef) {
 
@@ -226,6 +240,7 @@ export class Paginator implements ControlValueAccessor {
             this.updatePageLinks();
 
             this.onPageChange.emit(state);
+<<<<<<< HEAD
             this.calculatePagedItemSource(state.page);
         }
     }
@@ -234,6 +249,9 @@ export class Paginator implements ControlValueAccessor {
         if (this._itemSource && this._itemSource.length && this.rows) {
             this._pagedItemSource = this._itemSource.slice(pagenumber * this.rows, (pagenumber + 1) * this.rows);
             this.onModelChange(this._pagedItemSource);
+=======
+            this.updatePaginatorState();
+>>>>>>> 6f85eb18371e35cd1b0949ff866dc4381dadb669
         }
     }
 
@@ -274,6 +292,15 @@ export class Paginator implements ControlValueAccessor {
 
     onRppChange(event) {
         this.changePage(this.getPage());
+    }
+    
+    updatePaginatorState() {
+        this.paginatorState = {
+            page: this.getPage(),
+            rows: this.rows,
+            first: this.first,
+            totalRecords: this.totalRecords
+        }
     }
 }
 
